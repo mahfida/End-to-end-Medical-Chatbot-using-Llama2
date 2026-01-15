@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Medical Chatbot</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; max-width: 900px; }
+    h1 { margin-bottom: 8px; }
+    #chat { border: 1px solid #ddd; padding: 12px; border-radius: 8px; height: 420px; overflow-y: auto; background: #fafafa; }
+    .msg { margin: 10px 0; }
+    .user { font-weight: bold; }
+    .bot { font-weight: bold; }
+    .bubble { padding: 10px 12px; border-radius: 8px; display: inline-block; max-width: 90%; white-space: pre-wrap; }
+    .user-b { background: #e7f1ff; }
+    .bot-b { background: #e9ffe7; }
+    #row { display: flex; gap: 10px; margin-top: 12px; }
+    #q { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc; }
+    button { padding: 10px 14px; border-radius: 8px; border: 1px solid #333; cursor: pointer; background: #fff; }
+    button:disabled { opacity: 0.6; cursor: not-allowed; }
+    #status { margin-top: 10px; color: #666; font-size: 0.95rem; }
+  </style>
+</head>
+
+<body>
+  <h1>Medical Chatbot</h1>
+  <div id="chat"></div>
+
+  <div id="row">
+    <input id="q" type="text" placeholder="Type your question..." />
+    <button id="send">Send</button>
+  </div>
+  <div id="status"></div>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const q = document.getElementById("q");
+    const sendBtn = document.getElementById("send");
+    const statusEl = document.getElementById("status");
+
+    function addMessage(role, text) {
+      const wrap = document.createElement("div");
+      wrap.className = "msg";
+
+      const label = document.createElement("div");
+      label.className = role === "user" ? "user" : "bot";
+      label.textContent = role === "user" ? "You" : "Bot";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble " + (role === "user" ? "user-b" : "bot-b");
+      bubble.textContent = text;
+
+      wrap.appendChild(label);
+      wrap.appendChild(bubble);
+      chat.appendChild(wrap);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    async function askQuestion() {
+      const question = q.value.trim();
+      if (!question) return;
+
+      addMessage("user", question);
+      q.value = "";
+      q.focus();
+
+      sendBtn.disabled = true;
+      statusEl.textContent = "Thinking...";
+
+      try {
+        const res = await fetch("/ask", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          addMessage("bot", data.error || "Something went wrong.");
+        } else {
+          addMessage("bot", data.answer || "");
+        }
+      } catch (err) {
+        addMessage("bot", "Network error. Please try again.");
+      } finally {
+        sendBtn.disabled = false;
+        statusEl.textContent = "";
+      }
+    }
+
+    sendBtn.addEventListener("click", askQuestion);
+    q.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") askQuestion();
+    });
+  </script>
+</body>
+</html>
